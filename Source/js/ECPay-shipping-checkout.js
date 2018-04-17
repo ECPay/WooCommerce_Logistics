@@ -33,7 +33,7 @@ jQuery(document).ready(function($) {
             var checkoutData = ecpay_checkout_request.checkoutData;
             Object.keys(checkoutData).map(function(key) {
                 if (
-                    document.getElementById(key) !== null && 
+                    document.getElementById(key) !== null &&
                     typeof document.getElementById(key) !== "undefined"
                 ) {
                     document.getElementById(key).value = checkoutData[key];
@@ -126,13 +126,12 @@ jQuery(document).ready(function($) {
                 shipping_first_name = billing_first_name,
                 shipping_last_name  = billing_last_name,
                 shipping_company    = billing_company,
-                order_comments      = '';
+                order_comments      = $( 'textarea#order_comments' ).val();
 
             if ( $( '#ship-to-different-address' ).find( 'input' ).is( ':checked' ) ) {
                 shipping_first_name = $( '#shipping_first_name' ).val();
                 shipping_last_name  = $( '#shipping_last_name' ).val();
                 shipping_company    = $( '#shipping_company' ).val();
-                order_comments      = $( 'textarea#order_comments' ).val();
             }
             var data = {
                 billing_first_name  : billing_first_name,
