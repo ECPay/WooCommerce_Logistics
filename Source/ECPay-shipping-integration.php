@@ -1,12 +1,12 @@
 <?php
 /**
  * @copyright Copyright (c) 2018 Green World FinTech Service Co., Ltd. (https://www.ecpay.com.tw)
- * @version 1.2.180626
+ * @version 1.2.181030
  *
  * Plugin Name: ECPay Logistics for WooCommerce
  * Plugin URI: https://www.ecpay.com.tw
  * Description: ECPay Integration Logistics Gateway for WooCommerce
- * Version: 1.2.180626
+ * Version: 1.2.181030
  * Author: ECPay Green World FinTech Service Co., Ltd. 
  * Author URI:  techsupport@ecpay.com.tw
  */
@@ -276,7 +276,7 @@ function ECPayShippingMethodsInit()
                     'SenderName'           => $this->SenderName,
                     'SenderPhone'          => $this->SenderPhone,
                     'SenderCellPhone'      => $this->SenderCellPhone,
-                    'ReceiverName'         => $orderInfo['_billing_first_name'][0] . $orderInfo['_billing_last_name'][0],
+                    'ReceiverName'         => $this->get_receiver_name($orderInfo),
                     'ReceiverPhone'        => $orderInfo['_billing_phone'][0],
                     'ReceiverCellPhone'    => $orderInfo['_billing_phone'][0],
                     'ReceiverEmail'        => $orderInfo['_billing_email'][0],
@@ -359,6 +359,22 @@ function ECPayShippingMethodsInit()
                 })();
             </script>
             <?php
+        }
+
+        /**
+         * 取得收件者姓名
+         * @param  array    $orderInfo    訂單資訊
+         * @return string                 收件者姓名
+         */
+        private function get_receiver_name($orderInfo)
+        {
+            $receiverName = '';
+            if (array_key_exists('_shipping_first_name', $orderInfo) && array_key_exists('_shipping_last_name', $orderInfo)) {
+                $receiverName = $orderInfo['_shipping_last_name'][0] . $orderInfo['_shipping_first_name'][0];
+            } else {
+                $receiverName = $orderInfo['_billing_last_name'][0] . $orderInfo['_billing_first_name'][0];
+            }
+            return $receiverName;
         }
 
         function custom_override_checkout_fields($fields)
@@ -1195,13 +1211,15 @@ function ecpay_shipping_integration_plugin_init()
                 $this->receive_changeStore_response($response);
             
             $order = wc_get_order( $MerchantTradeNo );
+
+
             $order->add_order_note(print_r($response, true));
 
             if ($response['RtnCode'] == '300' || $response['RtnCode'] == '2001') {
                 $order->update_status( 'ecpay', "商品已出貨" );
             }
 
-            if (get_post_meta( $MerchantTradeNo, '_payment_method', true ) == 'PLUGIN_URL_pay') {
+            if (get_post_meta( $MerchantTradeNo, '_payment_method', true ) == 'ecpay_shipping_pay') {
                 if ($response['RtnCode'] == '2067' || $response['RtnCode'] == '3022') {
                     $order->update_status( 'processing', "處理中" );
 
