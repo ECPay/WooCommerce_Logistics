@@ -769,7 +769,7 @@ function ECPayShippingMethodsInit()
                         'IsCollection' => IsCollection::NO,
                         'ServerReplyURL' => $replyUrl,
                         'ExtraData' => '',
-                        'Device' => '0'
+                        'Device' => wp_is_mobile() == true ? 1 : '0'
                     );
                     // CvsMap
                     $html = $cvsObj->CvsMap('電子地圖', '_self');
