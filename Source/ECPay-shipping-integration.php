@@ -1582,7 +1582,7 @@ class ECPayShippingOptions
     }
 
     // 取得正規表示式
-    function getRegex($field)
+    static function getRegex($field)
     {
         $pattern = '';
 
