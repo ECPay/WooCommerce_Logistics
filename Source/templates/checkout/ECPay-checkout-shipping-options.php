@@ -27,18 +27,29 @@ foreach ($shipping_options as $option) {
         <select name="shipping_option" class="input-select" id="shipping_option">
             <?php echo $options; ?>
         </select>
-        <?php echo $html; ?>
+
+        <button id="__paymentButton" form="ECPayForm" value="<?php echo esc_html($buttonText);?>"><?php echo $buttonText;?></button>
+
         <p style="font-size: 0.8em;margin: 6px 0px; width: 84%;">
-            <?php echo __( '門市名稱', 'purchaserStore' ) . ':'; ?><label id="purchaserStoreLabel"></label>
+            <?php echo __( '門市名稱', 'purchaserStore' ) . ':'; ?><label id="purchaserStoreLabel"><?php echo $cvsInfo['CVSStoreName'];?></label>
         </p>
         <p style="font-size: 0.8em;margin: 6px 0px; width: 84%;">
-            <?php echo __( '門市地址', 'purchaserAddress' ) . ':'; ?><label id="purchaserAddressLabel"></label>
+            <?php echo __( '門市地址', 'purchaserAddress' ) . ':'; ?><label id="purchaserAddressLabel"><?php echo $cvsInfo['CVSAddress'];?></label>
         </p>
         <p style="font-size: 0.8em;margin: 6px 0px; width: 84%;">
-            <?php echo __( '門市電話', 'purchaserPhone' ) . ':'; ?><label id="purchaserPhoneLabel"></label>
+            <?php echo __( '門市電話', 'purchaserPhone' ) . ':'; ?><label id="purchaserPhoneLabel"><?php echo $cvsInfo['CVSTelephone'];?></label>
         </p>
         <p style="font-size: 0.8em;color: #c9302c; width: 84%;">
             <?php echo '使用綠界科技超商取貨，連絡電話請填寫手機號碼。'; ?>
         </p>
     </td>
 </tr>
+<div id="ECPayCvsForm"></div>
+
+<script>
+    jQuery(document).ready(function($) {
+        var form_ECPayForm = "<?php echo $html; ?>"
+        var content = $('<div>').append( form_ECPayForm ).html();
+        $("#ECPayCvsForm").prepend(content);
+    });
+</script>

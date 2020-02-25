@@ -95,17 +95,6 @@ final class ECPayLogisticsHelper extends ECPayLogisticsModuleHelper
     }
 
     /**
-     * callJSHelper function
-     * 引用JS Helper
-     *
-     * @return string
-     */
-    public function callJSHelper()
-    {
-        return '<script src="' . $this->dirPath . 'js/ECPay-shipping-helper.js?1.0.190611"></script>';
-    }
-
-    /**
      * changeStore function
      * 變更門市
      *
@@ -151,7 +140,7 @@ final class ECPayLogisticsHelper extends ECPayLogisticsModuleHelper
             'TradeDesc'            => '',
             'ServerReplyURL'       => $data['ServerReplyURL'],
             'LogisticsC2CReplyURL' => $data['LogisticsC2CReplyURL'],
-            'Remark'               => $data['Remark'],
+            'Remark'               => $this->replaceStrNewLine($data['Remark']),
             'PlatformID'           => '',
         );
 
@@ -550,5 +539,17 @@ final class ECPayLogisticsHelper extends ECPayLogisticsModuleHelper
     public function setOrderStatusEcpay($value)
     {
         $this->orderStatus['ecpay'] = $value;
+    }
+
+    /**
+     * 替換字串換行符號
+     *
+     * @param  string $subject 被執行動作字串
+     * @param  string $replace 替換換行符號的值，預設為空格
+     * @return string
+     */
+    public function replaceStrNewLine($subject, $replace = ' ')
+    {
+        return str_replace(array("\r", "\n", "\r\n", "\n\r"), $replace, $subject);
     }
 }

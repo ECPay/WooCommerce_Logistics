@@ -16,7 +16,7 @@ jQuery(document).ready(function($) {
         init: function() {
             var param = {
                 shipping: '',
-                category: $('#category').val(), // 物流類別
+                category: ecpay_checkout_request.category, // 物流類別
                 payment: $('[name="payment_method"]'), // 金流
                 url: ecpay_checkout_request.ajaxUrl, // 記錄 session 用 URL
             };
@@ -156,7 +156,7 @@ jQuery(document).ready(function($) {
         // 記錄資訊至 Session
         ecpay_save_data: function(data) {
             jQuery.ajax({
-                url: ecpay_checkout_form.$param.url,
+                url: ecpay_checkout_form.$param.url + "=Ecpay_Get_Checkout_Session",
                 type: 'post',
                 async: false,
                 data: data,
@@ -175,6 +175,10 @@ jQuery(document).ready(function($) {
             $('#purchaserStoreLabel').html('');
             $('#purchaserAddressLabel').html('');
             $('#purchaserPhoneLabel').html('');
+            $('#__paymentButton').html('電子地圖');
+
+            // 清除門市資訊 session
+            $.post(ecpay_checkout_form.$param.url  + "=Ecpay_Cvs_Info_Session_Clear");
         },
 
         // 付款方式變更

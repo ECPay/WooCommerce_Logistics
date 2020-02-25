@@ -1,14 +1,18 @@
 <?php
 /**
  * @copyright Copyright (c) 2018 Green World FinTech Service Co., Ltd. (https://www.ecpay.com.tw)
- * @version 1.3.1910240
+ * @version 1.3.2002120
  *
  * Plugin Name: ECPay Logistics for WooCommerce
  * Plugin URI: https://www.ecpay.com.tw
  * Description: ECPay Integration Logistics Gateway for WooCommerce
- * Version: 1.3.1910240
+ * Version: 1.3.2002120
  * Author: ECPay Green World FinTech Service Co., Ltd.
  * Author URI:  techsupport@ecpay.com.tw
+ * License: GPLv2
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
+ * WC requires at least: 3
+ * WC tested up to: 3.9.1
  */
 
 defined( 'ABSPATH' ) or exit;
@@ -16,6 +20,7 @@ define('ECPAY_PLUGIN_URL', plugin_dir_url( __FILE__ ));
 define('ECPAY_PLUGIN_PATH', plugin_dir_path( __FILE__ ));
 define('ECPAY_SHIPPING_ID', 'ecpay_shipping');
 define('ECPAY_SHIPPING_PAY_ID', 'ecpay_shipping_pay');
+define('ECPAY_SHIPPING_PLUGIN_VERSION', '1.3.2002120');
 require_once(ABSPATH . 'wp-admin/includes/file.php');
 require_once(ECPAY_PLUGIN_PATH . 'ECPayLogisticsHelper.php');
 
@@ -174,17 +179,20 @@ function ECPayShippingMethodsInit()
 
             // 結帳頁 Hook
 
-            // 加入 ECPay-shipping-checkout.js
-            add_action('wp_enqueue_scripts', array( $this, 'ecpay_shipping_checkout' ));
-
             // ecpay_save_data response
-            add_action( 'woocommerce_api_get_checkout_session', array($this, 'get_checkout_session'));
+            add_action('woocommerce_api_ecpay_get_checkout_session', array($this, 'ecpay_get_checkout_session'));
+
+            // 清除門市資訊 session
+            add_action('woocommerce_api_ecpay_cvs_info_session_clear', array($this, 'ecpay_cvs_info_session_clear'));
+
+            // 接收電子地圖回傳資訊
+            add_action('woocommerce_api_ecpay_receive_cvs_info', array($this, 'ecpay_receive_cvs_info'));
+
+            // 加入 ECPay-shipping-checkout.js
+            add_action('wp_enqueue_scripts', array( $this, 'ecpay_shipping_checkout'));
 
             // 顯示電子地圖
             add_action('woocommerce_review_order_after_shipping', array(&$this, 'wcso_review_order_shipping_options'));
-
-            // 加入物流必要 JS
-            add_action('woocommerce_review_order_before_submit', array(&$this, 'wcso_process_before_submit'));
 
             add_action('woocommerce_checkout_update_order_meta', array(&$this, 'wcso_field_update_shipping_order_meta'), 10, 2);
 
@@ -436,34 +444,49 @@ function ECPayShippingMethodsInit()
          */
         private function custom_checkout_fields($fields)
         {
+            $cvsInfo = WC()->session->get('cvsInfo');
+
             $fields['billing']['purchaserStore'] = array(
                 'label'         => __( '超商取貨門市名稱', 'purchaserStore' ),
-                'default'       => isset($_REQUEST['CVSStoreName']) ? sanitize_text_field($_REQUEST['CVSStoreName']) : '',
+                'default'       => $cvsInfo['CVSStoreName'],
                 'required'      => true,
                 'priority'      => 300,
                 'class'         => array('hidden')
             );
             $fields['billing']['purchaserAddress'] = array(
                 'label'         => __( '超商取貨門市地址', 'purchaserAddress' ),
-                'default'       => isset($_REQUEST['CVSAddress']) ? sanitize_text_field($_REQUEST['CVSAddress']) : '',
+                'default'       => $cvsInfo['CVSAddress'],
                 'required'      => true,
                 'priority'      => 310,
                 'class'         => array('hidden')
             );
             $fields['billing']['purchaserPhone'] = array(
                 'label'         => __( '超商取貨門市電話', 'purchaserPhone' ),
-                'default'       => isset($_REQUEST['CVSTelephone']) ? sanitize_text_field($_REQUEST['CVSTelephone']) : '',
+                'default'       => $cvsInfo['CVSTelephone'],
                 'priority'      => 320,
                 'class'         => array('hidden'),
             );
             $fields['billing']['CVSStoreID'] = array(
                 'label'         => __( '超商取貨門市代號', 'CVSStoreID' ),
-                'default'       => isset($_REQUEST['CVSStoreID']) ? sanitize_text_field($_REQUEST['CVSStoreID']) : '',
+                'default'       => $cvsInfo['CVSStoreID'],
                 'required'      => true,
                 'priority'      => 330,
                 'class'         => array('hidden')
             );
             return $fields;
+        }
+
+        // 儲存門市資訊 session
+        public function set_cvs_info_session()
+        {
+            $cvsInfo = [
+                'CVSStoreName' => isset($_REQUEST['CVSStoreName']) ? sanitize_text_field($_REQUEST['CVSStoreName']) : '',
+                'CVSAddress' => isset($_REQUEST['CVSAddress']) ? sanitize_text_field($_REQUEST['CVSAddress']) : '',
+                'CVSTelephone' => isset($_REQUEST['CVSTelephone']) ? sanitize_text_field($_REQUEST['CVSTelephone']) : '',
+                'CVSStoreID' => isset($_REQUEST['CVSStoreID']) ? sanitize_text_field($_REQUEST['CVSStoreID']) : ''
+            ];
+
+            WC()->session->set('cvsInfo', $cvsInfo);
         }
 
         /**
@@ -779,6 +802,20 @@ function ECPayShippingMethodsInit()
         }
 
         /**
+         * 判斷是否為啟用的運送項目
+         *
+         * @access public
+         * @return void
+         */
+        public function is_enable_shipping_options($value)
+        {
+            if (in_array($value, $this->shipping_options)) {
+                return true;
+            }
+            return false;
+        }
+
+        /**
          * 前台購物車顯示 option
          *
          * @access public
@@ -789,19 +826,23 @@ function ECPayShippingMethodsInit()
             global $woocommerce;
             try {
                 if ($this->is_avalible_shipping_facade() === true) {
-
                     // 取得物流子類別
                     $shipping_type = $this->get_session_shipping_type();
                     $sub_type = $this->get_sub_type_facade();
 
+                    // 判斷是否為啟用的物流方法
+                    if ($this->is_enable_shipping_options($shipping_type) === false) {
+                        $_SESSION['ecpayShippingType'] = '';
+                        $this->ecpay_cvs_info_session_clear();
+                    }
+
                     // 按鈕文字
-                    parse_str($_POST['post_data'], $postData);
-                    $CVSStoreID  = array_key_exists('CVSStoreID', $postData) ? $postData['CVSStoreID'] : '';
-                    $buttonText  = ($CVSStoreID === '') ? '電子地圖' : '重選電子地圖';
+                    $cvsInfo = WC()->session->get('cvsInfo');
+                    $buttonText  = (empty($cvsInfo['CVSStoreID'])) ? '電子地圖' : '重選電子地圖';
 
                     // 建立電子地圖
                     $shipping_name = $this->helper->ecpayLogistics[$this->category];
-                    $replyUrl = esc_url(wc_get_page_permalink('checkout'));
+                    $replyUrl = str_replace( 'http:', $this->isHttps(), add_query_arg('wc-api', 'Ecpay_Receive_Cvs_Info', home_url('/')) );
 
                     $data = array(
                         'MerchantTradeNo'  => 'no' . date('ymdHis'),
@@ -814,6 +855,8 @@ function ECPayShippingMethodsInit()
                     $args = array(
                         'category'         => $this->category,
                         'html'             => $html,
+                        'buttonText'       => $buttonText,
+                        'cvsInfo'          => $cvsInfo,
                         'method_title'     => $this->method_title,
                         'shipping_options' => $this->shipping_options,
                         'shipping_type'    => $shipping_type,
@@ -822,6 +865,9 @@ function ECPayShippingMethodsInit()
                     wc_get_template('checkout/ECPay-checkout-shipping-options.php', $args, '', ECPAY_PLUGIN_PATH . 'templates/');
 
                     add_filter( 'woocommerce_checkout_fields' , 'custom_override_checkout_fields');
+                } else {
+                    $this->ecpay_cvs_info_session_clear();
+                    wc_get_template('checkout/ECPay-checkout-remove-cvs-form.php', [], '', ECPAY_PLUGIN_PATH . 'templates/');
                 }
             }
             catch(Exception $e)
@@ -939,8 +985,7 @@ function ECPayShippingMethodsInit()
             if (array_key_exists($type, $shipping_methods) === true) {
                 $sub_type = $shipping_methods[$type];
             } else {
-                // 預設為統一超商取貨
-                $sub_type = $shipping_methods['UNIMART'];
+                $sub_type = '';
             }
             return $sub_type;
         }
@@ -1031,40 +1076,6 @@ function ECPayShippingMethodsInit()
         }
 
         /**
-         * 加入物流必要 JS
-         *
-         * @return void
-         */
-        public function wcso_process_before_submit()
-        {
-            try {
-                if ($this->is_avalible_shipping_facade() === true) {
-                    // 設定結帳用資料
-                    $this->start_session();
-                    $checkout = array();
-                    foreach ($this->checkoutData as $key => $value) {
-                        if (isset($_SESSION[$value]) === true) {
-                            $checkout[$value] = sanitize_text_field($_SESSION[$value]);
-                        } else {
-                            $checkout[$value] = '';
-                        }
-                    }
-
-                    // 傳遞資料到 ECPay-shipping-checkout.js
-                    $ecpay_checkout_request = array(
-                        'ajaxUrl' => str_replace( 'http:', $this->isHttps(), add_query_arg('wc-api', 'Get_Checkout_Session', home_url('/')) ),
-                        'checkoutData' => json_encode($checkout)
-                    );
-                    wp_localize_script( 'ecpay_shipping_checkout', 'ecpay_checkout_request', $ecpay_checkout_request );
-                }
-            }
-            catch(Exception $e)
-            {
-                echo esc_html($e->getMessage());
-            }
-        }
-
-        /**
          * 儲存訂單運送方式
          *
          * @param integer $order_id
@@ -1108,8 +1119,30 @@ function ECPayShippingMethodsInit()
             }
         }
 
+        // 接收電子地圖回傳資訊
+        public function ecpay_receive_cvs_info()
+        {
+            $this->set_cvs_info_session();
+
+            // 轉導回結帳頁面
+            wp_safe_redirect( esc_url(wc_get_page_permalink('checkout')) );
+        }
+
+        // 清除門市資訊 session
+        public function ecpay_cvs_info_session_clear()
+        {
+            $cvsInfo = [
+                'CVSStoreName' => '',
+                'CVSAddress' => '',
+                'CVSTelephone' =>  '',
+                'CVSStoreID' => ''
+            ];
+
+            WC()->session->set('cvsInfo', $cvsInfo);
+        }
+
         // 前台 - 儲存結帳頁資料至Session
-        public function get_checkout_session()
+        public function ecpay_get_checkout_session()
         {
             require_once(ECPAY_PLUGIN_PATH . 'ECPayLogisticsSession.php');
 
@@ -1157,14 +1190,33 @@ function ECPayShippingMethodsInit()
          */
         public function ecpay_shipping_checkout()
         {
+            // 設定結帳用資料
+            $this->start_session();
+            $checkout = array();
+            foreach ($this->checkoutData as $key => $value) {
+                if (isset($_SESSION[$value]) === true) {
+                    $checkout[$value] = sanitize_text_field($_SESSION[$value]);
+                } else {
+                    $checkout[$value] = '';
+                }
+            }
+
             // 載入js
             wp_enqueue_script(
                 'ecpay_shipping_checkout',
                 plugins_url( 'js/ECPay-shipping-checkout.js', __FILE__ ),
                 array(),
-                '1.2.190925',
+                ECPAY_SHIPPING_PLUGIN_VERSION,
                 true
             );
+
+            // 傳遞資料到 ECPay-shipping-checkout.js
+            $ecpay_checkout_request = array(
+                'category' => $this->category,
+                'ajaxUrl' => str_replace( 'http:', $this->isHttps(), add_query_arg('wc-api', '', home_url('/')) ),
+                'checkoutData' => json_encode($checkout)
+            );
+            wp_localize_script( 'ecpay_shipping_checkout', 'ecpay_checkout_request', $ecpay_checkout_request );
         }
 
         /**
@@ -1179,7 +1231,7 @@ function ECPayShippingMethodsInit()
                 'ecpay_shipping_helper',
                 plugins_url( 'js/ECPay-shipping-helper.js', __FILE__ ),
                 array(),
-                '1.2.190925',
+                ECPAY_SHIPPING_PLUGIN_VERSION,
                 true
             );
         }
@@ -1528,29 +1580,7 @@ function ecpay_checkout_field_process()
     }
 }
 
-add_filter('woocommerce_update_order_review_fragments', 'ecpay_checkout_payment_method', 10, 1);
-
-// 前台結帳頁-選擇門市後，顯示門市資訊於結帳頁
-function ecpay_checkout_payment_method($value)
-{
-    $value = ecpay_check_checkout_payment_method($value);
-
-    $CVSField = array(
-        'purchaserStore' => '<label id="purchaserStoreLabel">',
-        'purchaserAddress' => '<label id="purchaserAddressLabel">',
-        'purchaserPhone' => '<label id="purchaserPhoneLabel">'
-    );
-    // 解析字符串
-    parse_str($_POST['post_data'], $postData);
-
-    if (is_array($postData) && array_key_exists('CVSStoreID', $postData) && $postData['shipping_method'][0] === ECPAY_SHIPPING_ID) {
-        foreach ($CVSField as $key => $valueLabel) {
-            $value['.woocommerce-checkout-review-order-table'] = substr_replace($value['.woocommerce-checkout-review-order-table'], $postData[$key], strpos($value['.woocommerce-checkout-review-order-table'], $valueLabel) + strlen($valueLabel), 0);
-        }
-    }
-
-    return $value;
-}
+add_filter('woocommerce_update_order_review_fragments', 'ecpay_check_checkout_payment_method', 10, 1);
 
 // 前台結帳頁-判斷可以顯示的付款方式
 function ecpay_check_checkout_payment_method($value)

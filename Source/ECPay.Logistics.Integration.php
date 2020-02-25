@@ -189,7 +189,7 @@ if (!class_exists('EcpayLogistics', false)) {
         /**
          * 版本
          */
-        const VERSION = '1.1.191014';
+        const VERSION = '1.1.2002120';
 
         public $ServiceURL = '';
         public $HashKey = '';
@@ -218,7 +218,7 @@ if (!class_exists('EcpayLogistics', false)) {
                 'IsCollection' => '',
                 'ServerReplyURL' => '',
                 'ExtraData' => '',
-                'Device' => EcpayDevice::PC
+                'Device' => ''
             );
             $this->PostParams = $this->GetPostParams($this->Send, $ParamList);
             $this->PostParams['LogisticsType'] = EcpayLogisticsType::CVS;
@@ -230,7 +230,7 @@ if (!class_exists('EcpayLogistics', false)) {
             $this->ValidateIsCollection();
             $this->ValidateURL('ServerReplyURL', $this->PostParams['ServerReplyURL']);
             $this->ValidateString('ExtraData', $this->PostParams['ExtraData'], 20, true);
-            $this->ValidateDevice(true);
+            $this->ValidateDevice();
 
             return $this->GenPostHTML($ButtonDesc, $Target);
         }
@@ -1744,16 +1744,18 @@ if (!class_exists('EcpayLogistics', false)) {
          *
          * @return    void
          */
-        public function ValidateDevice($AllowEmpty = false)
+        public function ValidateDevice()
         {
             $Name = 'Device'; // 參數名稱
             $Value = $this->PostParams[$Name]; // 參數內容
 
-            // 資料型態檢查
-            $this->IsInteger($Name, $Value);
+            if (!empty($Value)) {
+                // 資料型態檢查
+                $this->IsInteger($Name, $Value);
 
-            // 內容檢查
-            $this->IsLegal($Name, $Value);
+                // 內容檢查
+                $this->IsLegal($Name, $Value);
+            }
         }
 
         /**
