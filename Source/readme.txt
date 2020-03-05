@@ -1,7 +1,7 @@
 ﻿=== ECPay Logistics for WooCommerce ===
 Contributors: ecpaytechsupport
 Tags: ecommerce, e-commerce, store, sales, sell, shop, cart, checkout, logistics, ecpay
-Requires at least: 5.2
+Requires at least: 4.5
 Tested up to: 5.3
 Requires PHP: 5.6 or later
 Stable tag: 1.3.1910240
@@ -25,7 +25,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 - 若須同時使用綠界科技WooCommerce金流模組，除了更新綠界科技WooCommerce物流模組外，綠界科技WooCommerce金流模組也請同步更新才能正常使用。
 
 = 聯絡我們 =
-  綠界技術客服信箱: techsupport@ecpay.com.tw
+  綠界技術服務工程師信箱: techsupport@ecpay.com.tw
 
 
 == Installation ==
@@ -48,6 +48,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 
 == Changelog ==
+
+v1.3.2003020
+調整 cURL timeout
 
 v1.3.2002120
 更新 SDK

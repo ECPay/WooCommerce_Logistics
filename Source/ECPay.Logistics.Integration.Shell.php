@@ -66,6 +66,19 @@ final class EcpayWooLogistics extends EcpayLogistics
     }
 }
 
+
+/**
+ * cURL 設定值
+ */
+abstract class EcpayWooLogisticsCurl {
+
+    /**
+     * @var int 逾時時間
+     */
+    const TIMEOUT = 30;
+
+}
+
 if (!class_exists('EcpayWooIo', true)) {
 	final class EcpayWooIo extends EcpayIo
 	{
@@ -79,8 +92,10 @@ if (!class_exists('EcpayWooIo', true)) {
         public static function ServerPost($Params, $ServiceURL)
         {
             $fields_string = http_build_query($Params);
+
             $rs = wp_remote_post($ServiceURL, array(
                 'method'      => 'POST',
+                'timeout'     => EcpayWooLogisticsCurl::TIMEOUT,
                 'headers'     => array(),
                 'httpversion' => '1.0',
                 'sslverify'   => true,
