@@ -1,18 +1,18 @@
 <?php
 /**
  * @copyright Copyright (c) 2018 Green World FinTech Service Co., Ltd. (https://www.ecpay.com.tw)
- * @version 1.3.2003020
+ * @version 1.3.2003180
  *
  * Plugin Name: ECPay Logistics for WooCommerce
  * Plugin URI: https://www.ecpay.com.tw
  * Description: ECPay Integration Logistics Gateway for WooCommerce
- * Version: 1.3.2003020
+ * Version: 1.3.2003180
  * Author: ECPay Green World FinTech Service Co., Ltd.
  * Author URI: https://www.ecpay.com.tw
  * License: GPLv2
  * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
  * WC requires at least: 3
- * WC tested up to: 3.9.2
+ * WC tested up to: 4.0.0
  */
 
 defined( 'ABSPATH' ) or exit;
@@ -20,7 +20,7 @@ define('ECPAY_PLUGIN_URL', plugin_dir_url( __FILE__ ));
 define('ECPAY_PLUGIN_PATH', plugin_dir_path( __FILE__ ));
 define('ECPAY_SHIPPING_ID', 'ecpay_shipping');
 define('ECPAY_SHIPPING_PAY_ID', 'ecpay_shipping_pay');
-define('ECPAY_SHIPPING_PLUGIN_VERSION', '1.3.2003020');
+define('ECPAY_SHIPPING_PLUGIN_VERSION', '1.3.2003180');
 require_once(ABSPATH . 'wp-admin/includes/file.php');
 require_once(ECPAY_PLUGIN_PATH . 'ECPayLogisticsHelper.php');
 
@@ -127,9 +127,6 @@ function ECPayShippingMethodsInit()
 
             // add the action
             add_action( 'woocommerce_admin_order_data_after_order_details', array(&$this,'action_woocommerce_admin_order_data_after_shipping_address' ));
-
-            // 後台變更門市 Response
-            add_action( 'woocommerce_api_get_change_response', array($this, 'get_change_response'));
         }
 
         /**
@@ -177,17 +174,7 @@ function ECPayShippingMethodsInit()
             // 隱藏與顯示貨到付款金流
             add_filter('woocommerce_available_payment_gateways', array(&$this, 'wcso_filter_available_payment_gateways'), 10, 1);
 
-            // 結帳頁 Hook
-
-            // ecpay_save_data response
-            add_action('woocommerce_api_ecpay_get_checkout_session', array($this, 'ecpay_get_checkout_session'));
-
-            // 清除門市資訊 session
-            add_action('woocommerce_api_ecpay_cvs_info_session_clear', array($this, 'ecpay_cvs_info_session_clear'));
-
-            // 接收電子地圖回傳資訊
-            add_action('woocommerce_api_ecpay_receive_cvs_info', array($this, 'ecpay_receive_cvs_info'));
-
+            /* 結帳頁 Hook */
             // 加入 ECPay-shipping-checkout.js
             add_action('wp_enqueue_scripts', array( $this, 'ecpay_shipping_checkout'));
 
@@ -444,7 +431,7 @@ function ECPayShippingMethodsInit()
          */
         private function custom_checkout_fields($fields)
         {
-            $cvsInfo = WC()->session->get('cvsInfo');
+            $cvsInfo = WC()->session->get('ecpay_cvs_info');
 
             $fields['billing']['purchaserStore'] = array(
                 'label'         => __( '超商取貨門市名稱', 'purchaserStore' ),
@@ -474,19 +461,6 @@ function ECPayShippingMethodsInit()
                 'class'         => array('hidden')
             );
             return $fields;
-        }
-
-        // 儲存門市資訊 session
-        public function set_cvs_info_session()
-        {
-            $cvsInfo = [
-                'CVSStoreName' => isset($_REQUEST['CVSStoreName']) ? sanitize_text_field($_REQUEST['CVSStoreName']) : '',
-                'CVSAddress' => isset($_REQUEST['CVSAddress']) ? sanitize_text_field($_REQUEST['CVSAddress']) : '',
-                'CVSTelephone' => isset($_REQUEST['CVSTelephone']) ? sanitize_text_field($_REQUEST['CVSTelephone']) : '',
-                'CVSStoreID' => isset($_REQUEST['CVSStoreID']) ? sanitize_text_field($_REQUEST['CVSStoreID']) : ''
-            ];
-
-            WC()->session->set('cvsInfo', $cvsInfo);
         }
 
         /**
@@ -837,7 +811,7 @@ function ECPayShippingMethodsInit()
                     }
 
                     // 按鈕文字
-                    $cvsInfo = WC()->session->get('cvsInfo');
+                    $cvsInfo = WC()->session->get('ecpay_cvs_info');
                     $buttonText  = (empty($cvsInfo['CVSStoreID'])) ? '電子地圖' : '重選電子地圖';
 
                     // 建立電子地圖
@@ -1119,15 +1093,6 @@ function ECPayShippingMethodsInit()
             }
         }
 
-        // 接收電子地圖回傳資訊
-        public function ecpay_receive_cvs_info()
-        {
-            $this->set_cvs_info_session();
-
-            // 轉導回結帳頁面
-            wp_safe_redirect( esc_url(wc_get_page_permalink('checkout')) );
-        }
-
         // 清除門市資訊 session
         public function ecpay_cvs_info_session_clear()
         {
@@ -1138,7 +1103,7 @@ function ECPayShippingMethodsInit()
                 'CVSStoreID' => ''
             ];
 
-            WC()->session->set('cvsInfo', $cvsInfo);
+            WC()->session->set('ecpay_cvs_info', $cvsInfo);
         }
 
         // 前台 - 儲存結帳頁資料至Session
@@ -1364,6 +1329,129 @@ function ecpay_shipping_integration_plugin_init()
 
             # Register a action to process the callback
             add_action('woocommerce_api_wc_gateway_ecpay_logis', array($this, 'receive_response'));
+
+            # ecpay_save_data response
+            add_action('woocommerce_api_ecpay_get_checkout_session', array($this, 'ecpay_get_checkout_session'), 5);
+
+            # 接收電子地圖回傳資訊
+            add_action('woocommerce_api_ecpay_receive_cvs_info', array($this, 'ecpay_receive_cvs_info'), 5);
+
+            # 清除門市資訊 session
+            add_action('woocommerce_api_ecpay_cvs_info_session_clear', array($this, 'ecpay_cvs_info_session_clear'));
+
+            # 後台變更門市 Response
+            add_action( 'woocommerce_api_get_change_response', array($this, 'get_change_response'));
+        }
+
+        /**
+         * 接收電子地圖回傳資訊
+         *
+         * @return void
+         */
+        public function ecpay_receive_cvs_info()
+        {
+            $this->set_cvs_info_session();
+
+            // 轉導回結帳頁面
+            wp_safe_redirect( esc_url(wc_get_page_permalink('checkout')) );
+        }
+
+        /**
+         * 儲存門市資訊 session
+         *
+         * @return void
+         */
+        public function set_cvs_info_session()
+        {
+            $cvsInfo = [
+                'CVSStoreName' => isset($_REQUEST['CVSStoreName']) ? sanitize_text_field($_REQUEST['CVSStoreName']) : '',
+                'CVSAddress' => isset($_REQUEST['CVSAddress']) ? sanitize_text_field($_REQUEST['CVSAddress']) : '',
+                'CVSTelephone' => isset($_REQUEST['CVSTelephone']) ? sanitize_text_field($_REQUEST['CVSTelephone']) : '',
+                'CVSStoreID' => isset($_REQUEST['CVSStoreID']) ? sanitize_text_field($_REQUEST['CVSStoreID']) : ''
+            ];
+
+            WC()->session->set('ecpay_cvs_info', $cvsInfo);
+        }
+
+        /**
+         * 清除門市資訊 session
+         *
+         * @return void
+         */
+        public function ecpay_cvs_info_session_clear()
+        {
+            WC()->session->__unset( 'ecpay_cvs_info' );
+        }
+
+        // 前台 - 儲存結帳頁資料至Session
+        public function ecpay_get_checkout_session()
+        {
+            require_once(ECPAY_PLUGIN_PATH . 'ECPayLogisticsSession.php');
+
+            session_start();
+
+            if ( ! is_array($_POST)) {
+                return;
+            }
+
+            $serviceList = array('ecpayShippingType', 'checkoutInput');
+            $checkoutInput = array();
+            foreach ($_POST as $key => $value) {
+                if (in_array($key, $serviceList)) {
+                    // 判斷 sanitize 的變數型態
+                    if (is_array($value)) {
+                        $checkoutInput[$key] = array_map( 'sanitize_text_field', wp_unslash( $value ) );
+                    } else {
+                        $checkoutInput[$key] = sanitize_text_field($value);
+                    }
+                }
+            }
+            $LogisticsField = 'ECPay_' . key($checkoutInput);
+            $LogisticsObj = new $LogisticsField;
+            $LogisticsObj->setInput($checkoutInput);
+            $LogisticsObj->validate();
+            $LogisticsObj->store();
+
+            exit;
+        }
+
+        /**
+         * 後台 - 變更門市 Response
+         * @return void
+         */
+        public function get_change_response()
+        {
+            // 接收資料
+            $CVSStoreName = sanitize_text_field($_REQUEST['CVSStoreName']);
+            $CVSAddress   = sanitize_text_field($_REQUEST['CVSAddress']);
+            $CVSTelephone = sanitize_text_field($_REQUEST['CVSTelephone']);
+            $CVSStoreID   = sanitize_text_field($_REQUEST['CVSStoreID']);
+
+            // 驗證
+            if (mb_strlen( $CVSStoreName, "utf-8") > 10) {
+                $CVSStoreName = mb_substr($CVSStoreName, 0, 10, "utf-8");
+            }
+            if (mb_strlen( $CVSAddress, "utf-8") > 60) {
+                $CVSAddress = mb_substr($CVSAddress , 0, 60, "utf-8");
+            }
+            if (strlen($CVSTelephone) > 20) {
+                $CVSTelephone = substr($CVSTelephone  , 0, 20);
+            }
+            if (strlen($CVSStoreID) > 10) {
+                $CVSStoreID = substr($CVSTelephone , 0, 10);
+            }
+
+            // 自動儲存
+            $MerchantTradeNo = sanitize_text_field($_REQUEST['MerchantTradeNo']);
+            update_post_meta($MerchantTradeNo, '_shipping_purchaserStore', $CVSStoreName);
+            update_post_meta($MerchantTradeNo, '_shipping_purchaserAddress', $CVSAddress);
+            update_post_meta($MerchantTradeNo, '_shipping_purchaserPhone', $CVSTelephone);
+            update_post_meta($MerchantTradeNo, '_shipping_CVSStoreID', $CVSStoreID);
+
+            // template
+            wc_get_template('admin/ECPay-admin-change-response.php', array(), '', ECPAY_PLUGIN_PATH . 'templates/');
+
+            exit;
         }
 
         /**
