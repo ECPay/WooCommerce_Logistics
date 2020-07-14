@@ -2,9 +2,9 @@
 Contributors: ecpaytechsupport
 Tags: ecommerce, e-commerce, store, sales, sell, shop, cart, checkout, logistics, ecpay
 Requires at least: 4.5
-Tested up to: 5.3
+Tested up to: 5.4
 Requires PHP: 5.6 or later
-Stable tag: 1.3.2003180
+Stable tag: 1.3.2007070
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,10 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 
 == Changelog ==
+
+v1.3.2007070
+修正相容性至 WordPress Version 5.4.2
+修正相容性至 WooCommerce Version 4.2.2
 
 v1.3.2003180
 修正相容性至 WooCommerce Version 4.0.0

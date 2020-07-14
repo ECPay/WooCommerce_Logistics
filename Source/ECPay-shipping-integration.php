@@ -1,18 +1,18 @@
 <?php
 /**
  * @copyright Copyright (c) 2018 Green World FinTech Service Co., Ltd. (https://www.ecpay.com.tw)
- * @version 1.3.2003180
+ * @version 1.3.2007070
  *
  * Plugin Name: ECPay Logistics for WooCommerce
  * Plugin URI: https://www.ecpay.com.tw
  * Description: ECPay Integration Logistics Gateway for WooCommerce
- * Version: 1.3.2003180
+ * Version: 1.3.2007070
  * Author: ECPay Green World FinTech Service Co., Ltd.
  * Author URI: https://www.ecpay.com.tw
  * License: GPLv2
  * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
  * WC requires at least: 3
- * WC tested up to: 4.0.0
+ * WC tested up to: 4.2.2
  */
 
 defined( 'ABSPATH' ) or exit;
@@ -20,7 +20,7 @@ define('ECPAY_PLUGIN_URL', plugin_dir_url( __FILE__ ));
 define('ECPAY_PLUGIN_PATH', plugin_dir_path( __FILE__ ));
 define('ECPAY_SHIPPING_ID', 'ecpay_shipping');
 define('ECPAY_SHIPPING_PAY_ID', 'ecpay_shipping_pay');
-define('ECPAY_SHIPPING_PLUGIN_VERSION', '1.3.2003180');
+define('ECPAY_SHIPPING_PLUGIN_VERSION', '1.3.2007070');
 require_once(ABSPATH . 'wp-admin/includes/file.php');
 require_once(ECPAY_PLUGIN_PATH . 'ECPayLogisticsHelper.php');
 
