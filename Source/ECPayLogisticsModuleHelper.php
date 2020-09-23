@@ -105,7 +105,7 @@ class ECPayLogisticsModuleHelper
      * @param string $merchantId Merchant ID
      * @return bool
      */
-    protected function isTestMode($merchantId = '')
+    public function isTestMode($merchantId = '')
     {
         return in_array($merchantId, $this->stageMerchantIds);
     }

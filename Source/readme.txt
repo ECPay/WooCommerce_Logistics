@@ -2,9 +2,9 @@
 Contributors: ecpaytechsupport
 Tags: ecommerce, e-commerce, store, sales, sell, shop, cart, checkout, logistics, ecpay
 Requires at least: 4.5
-Tested up to: 5.4
+Tested up to: 5.5.1
 Requires PHP: 5.6 or later
-Stable tag: 1.3.2007070
+Stable tag: 2.0.2009210
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,13 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 
 == Changelog ==
+
+v2.0.2009210
+調整結帳流程，選擇超商門市變更於結帳之後
+取貨不付款，需搭配綠界金流使用(版本需求: v2.0.2009210 或更新)
+修正相容性至 WordPress Version 5.5.1
+修正相容性至 WooCommerce Version 4.5.2
+移除後台設定欄位「測試模式」
 
 v1.3.2007070
 修正相容性至 WordPress Version 5.4.2
